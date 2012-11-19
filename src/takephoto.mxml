@@ -1,0 +1,419 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="580" height="560" creationComplete="app()">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.UrlHelper;
+			import com.adobe.images.JPGEncoder;
+			
+			import flash.net.FileReference;
+			import flash.net.URLVariables;
+			
+			import mx.controls.Alert;
+			import mx.effects.Rotate;
+			import mx.events.CloseEvent;
+			import mx.graphics.ImageSnapshot;
+			
+			public var file:FileReference=new FileReference();
+			public var typeFilter:FileFilter = new FileFilter("图片","*.jpg;*.gif;*.png;*.jpeg");
+			private var uploadURL:String="./file_upload/upload.php";
+			
+			public function app():void
+			{
+				var copyrightMenuItem:ContextMenuItem = new ContextMenuItem("【技术支持：广州游子信息科技有限公司】", true, true, true);
+				copyrightMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,function(e:ContextMenuEvent):void{
+					UrlHelper.navigateToUrl("http://www.yoozi.com.cn/");
+				});
+				var contextMenuCustomItems:Array = this.contextMenu.customItems;
+				contextMenuCustomItems.push(copyrightMenuItem);
+			}
+			
+			
+			///////////////// 摄像头 ///////////////////////////////////////
+			private static const DEFAULT_CAMERA_WIDTH:Number = 400;  
+			private static const DEFAULT_CAMERA_HEIGHT:Number = 300;  
+			//定义一个摄像头  
+			private var camera:Camera;   
+			//定义一个本地视频  
+			private var localVideo:Video;   
+			//定义视频截图  
+			private var videoBitmapData:BitmapData;   
+			
+			//初始化摄像头  
+			private function initCamera():void  
+			{  
+				//打开摄像头  
+				camera = Camera.getCamera("0");  
+				if(camera == null && Camera.names.length <= 0)  
+				{  
+					Alert.show("没有找到摄像头，是否重新查找!", "提示", Alert.OK|Alert.NO, this, onInitCamera);  
+					return;  
+				}
+				camera.addEventListener(StatusEvent.STATUS,onCameraStatusHandler);  
+				//将摄像头的捕获模式设置为最符合指定要求的本机模式.  
+				camera.setMode(DEFAULT_CAMERA_WIDTH,DEFAULT_CAMERA_HEIGHT,30);  
+				//设置每秒的最大带宽或当前输出视频输入信号所需的画面质量  
+				camera.setQuality(144,85);  
+				localVideo = new Video();  
+				localVideo.width = DEFAULT_CAMERA_WIDTH;  
+				localVideo.height = DEFAULT_CAMERA_HEIGHT;  
+				//正在捕获视频数据的 Camera 对象  
+				localVideo.attachCamera(camera);  
+				cameraVideo.addChild(localVideo);  
+				//USB 视频设备  
+				//trace(Camera.names.length+"");  
+			}  
+			
+			//拍照按钮事件，进行视频截图  
+			private function snapshotPicture():void  
+			{  
+				//切换场景
+				file_edit.visible = true;
+				file_camera.visible = false;
+				//截图
+				videoBitmapData = new BitmapData(DEFAULT_CAMERA_WIDTH,DEFAULT_CAMERA_HEIGHT);  
+				videoBitmapData.draw(cameraVideo,new Matrix());  
+				var videoBitmap:Bitmap = new Bitmap(videoBitmapData);  
+				imgPicture.source = videoBitmap;//显示用的大图片
+				truePic.width = DEFAULT_CAMERA_WIDTH;//真正的大图片
+				truePic.height = DEFAULT_CAMERA_WIDTH;//真正的大图片 高和宽一致，保持正方形比例
+				truePic.source = videoBitmap; //真正的大图片
+				//按钮可点击
+				canclick();
+			}  
+			
+			
+			//检测摄像头权限事件  
+			private function onCameraStatusHandler(event:StatusEvent):void  
+			{  
+				if(!camera.muted)  
+				{  
+					btn_ok.enabled = true;  
+				}  
+				else  
+				{  
+					Alert.show("无法链接到活动摄像头，是否重新检测，请充许使用摄像头！", "提示", Alert.OK|Alert.NO, this, onInitCamera);  
+				}  
+				camera.removeEventListener(StatusEvent.STATUS, onCameraStatusHandler);  
+			}  
+			
+			//当摄像头不存在，或连接不正常时重新获取  
+			private function onInitCamera(event:CloseEvent):void  
+			{  
+				if(event.detail == Alert.OK)  
+				{ initCamera(); }  
+			}
+			
+			//////////////////////// 选择本地图片 ////////////////////////////////////
+			private function BrowseFile():void{ 
+				file.browse([typeFilter]); 
+				file.addEventListener(Event.SELECT,fileSelected);//文件选择
+			}
+			private function fileSelected(evt:Event):void{ 
+				file.load(); 
+				file.addEventListener(Event.COMPLETE,fileLoaded);	//文件选择完成
+			}
+			private function fileLoaded(evt:Event):void
+			{
+				var loader:Loader=new Loader();
+				loader.loadBytes(file.data);
+				loader.contentLoaderInfo.addEventListener(Event.COMPLETE,function(evt:Event):void{
+					var target:Loader=evt.target.loader;
+					
+					imgPicture.source = file.data;//显示用的大图片
+					truePic.width = (target.width > target.height)?target.width:target.height;
+					truePic.height = (target.width > target.height)?target.width:target.height;
+					truePic.source = file.data;//真正的大图片
+					canclick();
+				});
+			}
+			
+			///////////////////// 按钮操作 /////////////////////////////////////////////
+			// 左转，右转，保存，取消 4个按钮不可点击
+			public function cannotclick():void
+			{
+				btn_left.enabled = false;
+				btn_right.enabled = false;
+				btn_save.enabled = false;
+				btn_cancel.enabled = false;
+				
+				bigshow.visible = false;
+				defaultpic.visible = true;
+			}
+			// 左转，右转，保存，取消 4个按钮可以点击
+			public function canclick():void
+			{
+				btn_left.enabled = true;
+				btn_right.enabled = true;
+				btn_save.enabled = true;
+				btn_cancel.enabled = true;
+				
+				bigshow.visible = true;
+				defaultpic.visible = false;
+				
+				//执行小截图操作
+				setTimeout(doCutPic, 500);
+			}
+			
+			//取消截图
+			public function cancelpic():void
+			{
+				//两个图片
+				imgPicture.source = "";
+				//imgPictureLittle.source = "";
+				
+				bigshow.visible = false;
+				defaultpic.visible = true;
+			
+				cannotclick();
+			}
+			
+			//获取本地图片
+			public function showLocal():void
+			{
+				file_edit.visible = true;
+				file_camera.visible = false;
+				
+				BrowseFile();
+			}
+			
+			//获取摄像头
+			public function showCamera():void
+			{
+				file_edit.visible = false;
+				file_camera.visible = true;
+				
+				//连接
+				initCamera();
+			}
+			
+			//获取真正大图 和 显示用的大图 的比例
+			public function getProportion():Number
+			{
+				var proportion:Number = truePic.width / imgPicture.width;
+				return proportion;
+			}
+			
+			////////////////////// 截取小方块的移动 ///////////////////////////////////
+			public function boxdown(event:MouseEvent):void
+			{
+				moveBox.startDrag(false, new Rectangle (0, 0, 300-moveBox.width, 300-moveBox.height ));
+				stage.addEventListener(MouseEvent.MOUSE_UP , boxup);
+				stage.addEventListener(MouseEvent.MOUSE_MOVE , boxmove);
+			}
+			public function boxup(event:MouseEvent):void
+			{
+				moveBox.stopDrag();
+				stage.removeEventListener(MouseEvent.MOUSE_UP, boxup);
+				stage.removeEventListener(MouseEvent.MOUSE_MOVE, boxmove);
+			}
+			public function boxmove(event:MouseEvent):void
+			{
+				//纠正手柄的位置
+				shoubing.x = moveBox.x + moveBox.width - shoubing.width/2 - 1;
+				shoubing.y = moveBox.y + moveBox.height - shoubing.height/2 - 1;
+				
+				//执行小截图操作
+				doCutPic();
+			}
+			
+			////////////////////////// 手柄的移动 /////////////////////////////////////////////
+			public function sb(event:MouseEvent):void
+			{
+				var fanwei:Number = 300 - moveBox.x;
+				if(300 - moveBox.y < fanwei)
+				{
+					fanwei = 300 - moveBox.y
+				}
+				shoubing.startDrag(false, new Rectangle (moveBox.x+10, moveBox.y+10, 
+											fanwei-shoubing.width*2+shoubing.width/2-1, 
+											fanwei-shoubing.height*2+shoubing.height/2-1 ));
+				stage.addEventListener(MouseEvent.MOUSE_UP , sbup);
+				stage.addEventListener(MouseEvent.MOUSE_MOVE , sbmove);
+			}
+			public function sbup(event:MouseEvent):void
+			{
+				shoubing.stopDrag();
+				stage.removeEventListener(MouseEvent.MOUSE_UP, sbup);
+				stage.removeEventListener(MouseEvent.MOUSE_MOVE, sbmove);
+			}
+			public function sbmove(event:MouseEvent):void
+			{
+				//纠正截图方块的宽高
+				moveBox.width = shoubing.x - moveBox.x + shoubing.width/2 + 1;
+				moveBox.height = shoubing.x - moveBox.x + shoubing.width/2 + 1;
+				
+				//纠正手柄的位置
+				shoubing.x = moveBox.x + moveBox.width - shoubing.width/2 - 1;
+				shoubing.y = moveBox.y + moveBox.height - shoubing.height/2 - 1;
+				
+				//执行小截图操作
+				doCutPic();
+			}
+			
+			////////////////////////// 小截图 ///////////////////////////////////////
+			public function doCutPic():void
+			{
+				//同步：真正图片的选择框和显示图片的选择框
+				trueBox.width = int(moveBox.width * getProportion());
+				trueBox.height = int(moveBox.height * getProportion());
+				trueBox.x = int(moveBox.x * getProportion());
+				trueBox.y = int(moveBox.y * getProportion());
+				
+				//用bitmapdata全部获取预览图片的像素(真正的应该是：实际图片的像素)
+				var initBD:BitmapData = new BitmapData(truePic.width,truePic.height);
+				initBD.draw(truePic);
+				var bytearray:ByteArray = new ByteArray();
+				//矩形为要截取区域  
+				var re:Rectangle = new Rectangle(trueBox.x,trueBox.y,trueBox.width,trueBox.height);
+				bytearray = initBD.getPixels(re); //截取出所选区域的像素集合
+				var imgBD:BitmapData = new BitmapData(trueBox.width,trueBox.height);
+				bytearray.position=0;//必须的，当前的bytearray.position为最大长度，要设为从0开始读取
+				var fillre:Rectangle = new Rectangle(0,0,trueBox.width,trueBox.height);
+				imgBD.setPixels(fillre,bytearray); //将截取出的像素集合存在新的bitmapdata里，大小和截取区域一样
+				
+				imgPictureLittle.source = new Bitmap(imgBD);
+				imgPictureLittle.smooth = true;
+			}
+			
+			////////////////////////////// 图片旋转 ////////////////////////////////
+			public function rotationLeft():void
+			{
+				rotateBigPic(-1);
+				rotateTruePic(-1);
+				setTimeout(doCutPic, 500);
+			}
+			public function rotationRight():void
+			{
+				rotateBigPic(1);
+				rotateTruePic(1);
+				setTimeout(doCutPic, 500);
+			}
+			
+			private function rotateBigPic(_left:Number):void  
+			{    
+				var bd:BitmapData = new BitmapData(imgPicture.height, imgPicture.width);  
+				bd.draw(imgPicture,null,null,null,null,true);
+				imgPicture.source=new Bitmap(setPic(bd, _left));  
+			}
+			private function rotateTruePic(_left:Number):void  
+			{    
+				var bd:BitmapData = new BitmapData(truePic.height, truePic.width);  
+				bd.draw(truePic,null,null,null,null,true);
+				truePic.source=new Bitmap(setPic(bd, _left));  
+			}
+			public function setPic(bmp:BitmapData, _left:Number):BitmapData
+			{
+				var m:Matrix = new Matrix();
+				if(_left == 1)
+				{
+					m.rotate(Math.PI/2);
+					m.translate(bmp.height,0);
+				}
+				else
+				{
+					m.rotate(-Math.PI/2);
+					m.translate(0,bmp.width); 
+				}
+				var bd:BitmapData = new BitmapData(bmp.height, bmp.width);  
+				bd.draw(bmp,m);  
+				return bd;  
+			}  
+			
+			//////////////////////// 上传文件  /////////////////////////////////////
+			public function UploadFile():void{
+				
+				var bmd:BitmapData = ImageSnapshot.captureBitmapData(imgPictureLittle.source as IBitmapDrawable);
+				var encoder:JPGEncoder =new JPGEncoder(100);
+				var bys:ByteArray= encoder.encode(bmd);
+				var header:URLRequestHeader = new URLRequestHeader ("Content-type", "application/octet-stream");
+				var request:URLRequest=new URLRequest(uploadURL);
+				request.requestHeaders.push(header);
+				request.method="POST";
+				
+				var params:URLVariables=new URLVariables();
+				params.pic=bys;
+				params.rnd=Math.random();
+				request.data=bys;
+				
+				var load:URLLoader=new URLLoader();
+				load.load(request);
+				load.addEventListener(Event.COMPLETE,function(evt:Event):void{
+					//Alert.show("头像上传成功！");
+					
+					//调用页面的页面中的js，执行需要的操作
+					ExternalInterface.call("callJS");
+				});
+				
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<s:Image id="btn_upload" x="25" y="7" buttonMode="true" source="@Embed('assets/file_local.png')" click="showLocal()"/>
+	<s:Image id="btn_camera" x="175" y="7" buttonMode="true" source="@Embed('assets/file_camera.png')" click="showCamera()"/>
+	
+	<!--编辑图片窗口-->
+	<s:Group x="10" y="60" width="560" height="490" id="file_edit" visible="true">
+		<s:Label x="18" y="17" width="272" height="22" color="#6F6F6F" text="仅支持JPG、GIF、PNG，且文件小于2M"/>
+		<s:Label x="371" y="221" width="112" height="22" color="#6F6F6F" text="96 x 96 像素"/>
+		<s:Image x="18" y="62" source="@Embed('assets/default_border.png')"/>
+		<s:Label x="368" y="63" color="#FF7800" text="您上传的图像将生成以下头像"/>
+		<s:Image x="368" y="101" source="@Embed('assets/little_border.png')"/>
+		
+		<s:Image x="78" y="381" source="@Embed('assets/o_left.png')" buttonMode="true" id="btn_left" click="rotationLeft()" enabled="false"/>
+		<s:Image x="185" y="381" source="@Embed('assets/o_right.png')" buttonMode="true" id="btn_right" click="rotationRight()" enabled="false"/>
+		<s:Image x="78" y="446" source="@Embed('assets/btn_save.png')" buttonMode="true" id="btn_save" enabled="false" click="UploadFile()"/>
+		<s:Image x="188" y="446" source="@Embed('assets/btn_cancel.png')" buttonMode="true" id="btn_cancel" enabled="false" click="cancelpic()"/>
+		
+		<!--默认的,需要选择图片-->
+		<s:Group id="defaultpic">
+			<s:Image x="19" y="63" source="@Embed('assets/default_upload.png')" id="default_big_pic"/>
+			<s:Image x="369" y="102" source="@Embed('assets/little_pic.png')" id="default_small_pic"/>
+		</s:Group>
+		
+		<!--真正的图片源，永远不可见！小截图就从这里截取-->
+		<s:Group x="600" y="0" visible="false">
+			<!--真正的图片-->
+			<s:Image x="0" y="0" id="truePic" />
+			<!--相应的选择框-->
+			<mx:Canvas x="0" y="0" width="100" height="100" id="trueBox"
+					   borderColor="0x999999" borderVisible="true" borderStyle="solid" 
+					   backgroundColor="0xFFFFFF" backgroundAlpha="0.3">
+			</mx:Canvas>
+		</s:Group>
+		
+		<!--有图片啦, 给人看的，操作用的-->
+		<s:Group x="19" y="63" width="300" height="300" id="bigshow" visible="false">
+			<s:Group x="0" y="0" width="300" height="300" id="bing">
+				<!--大截图-->
+				<s:Image x="0" y="0" width="300" height="300" id="imgPicture" />
+				<!--可缩放的正方形-->
+				<mx:Canvas x="100" y="100" width="100" height="100" id="moveBox"
+						   borderColor="0x999999" borderVisible="true" borderStyle="solid" 
+						   backgroundColor="0xFFFFFF" backgroundAlpha="0.3" 
+						   mouseDown="boxdown(event)">
+				</mx:Canvas>
+				<!--缩放手柄-->
+				<s:Image x="194" y="194" source="@Embed('assets/rec.png')" id="shoubing" mouseDown="sb(event)"/> 
+			</s:Group>
+			
+			<!--小截图-->
+			<s:Image x="350" y="39" width="96" height="96" id="imgPictureLittle" />
+		</s:Group>
+		
+	</s:Group>
+	
+	<!--获取摄像头窗口-->
+	<s:Group x="10" y="60" width="560" height="490" id="file_camera" visible="false">
+		<s:Label x="171" y="175" fontWeight="normal" text="摄像头检测中..."/>
+		<s:VideoDisplay id="cameraVideo" x="16" y="47" width="400" height="300"/>
+		<s:Image x="175" y="396" source="@Embed('assets/btn_ok.png')" buttonMode="true" id="btn_ok" click="snapshotPicture()"/>
+	</s:Group>
+	
+</s:Application>
