@@ -11,6 +11,7 @@
 			import com.UrlHelper;
 			import com.adobe.images.JPGEncoder;
 			
+			import flash.external.ExternalInterface;
 			import flash.net.FileReference;
 			import flash.net.URLVariables;
 			
@@ -21,7 +22,8 @@
 			
 			public var file:FileReference=new FileReference();
 			public var typeFilter:FileFilter = new FileFilter("图片","*.jpg;*.gif;*.png;*.jpeg");
-			private var uploadURL:String="./file_upload/upload.php";
+			//private var uploadURL:String = "./file_upload/upload.php";
+			public var uploadURL:String = ExternalInterface.call("setUploadURL","");
 			
 			public function app():void
 			{
@@ -31,8 +33,13 @@
 				});
 				var contextMenuCustomItems:Array = this.contextMenu.customItems;
 				contextMenuCustomItems.push(copyrightMenuItem);
+				
+				if(uploadURL == "")
+				{
+					Alert.show("上传头像的路径还没有设置");
+				}
 			}
-			
+
 			
 			///////////////// 摄像头 ///////////////////////////////////////
 			private static const DEFAULT_CAMERA_WIDTH:Number = 400;  
