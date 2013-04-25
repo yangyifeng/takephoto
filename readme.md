@@ -23,3 +23,7 @@
 ## 开发工具
 
 * Adobe Flash Builder 4.6
+
+## Demo
+
+[http://yangyifeng.github.io/takephoto/](http://yangyifeng.github.io/takephoto/)
