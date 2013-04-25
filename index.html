@@ -1,6 +1,35 @@
 <!DOCTYPE html>
 <html>
+  <script type="text/javascript">
+      function thisMovie(movieName)
+      {
+          if (window.document[movieName])
+          {  
+              return window.document[movieName];  
+          }
+          else if (navigator.appName.indexOf("Microsoft")==-1)
+          {  
+              if (document.embeds && document.embeds[movieName])  
+              return document.embeds[movieName];  
+          }
+          else
+          {  
+              return document.getElementById(movieName);  
+          }
+      }
+          
+      function callJS()
+      {
+          alert("上传完成，在页面调用JS执行下一步操作");
+      }
 
+      function setUploadURL()
+      {
+          //上传头像的url，给as3使用的
+          var upload_url = "./file_upload/upload.php";
+          return upload_url;
+      }
+  </script>
   <head>
     <meta charset='utf-8' />
     <meta http-equiv="X-UA-Compatible" content="chrome=1" />
@@ -8,7 +37,31 @@
 
     <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
 
-    <title>Takephoto</title>
+    <title>本地/摄像头上传头像（仿微博头像上传功能）</title>
+    <script type="text/javascript" src="./assets/swfobject.js"></script>
+        <script type="text/javascript">
+            // For version detection, set to min. required Flash Player version, or 0 (or 0.0.0), for no version detection. 
+            var swfVersionStr = "11.1.0";
+            // To use express install, set to playerProductInstall.swf, otherwise the empty string. 
+            var xiSwfUrlStr = "./assets/playerProductInstall.swf";
+            var flashvars = {};
+            var params = {};
+            params.quality = "high";
+            params.bgcolor = "#ffffff";
+            params.allowscriptaccess = "sameDomain";
+            params.allowfullscreen = "true";
+            var attributes = {};
+            attributes.id = "takephoto";
+            attributes.name = "takephoto";
+            attributes.align = "middle";
+            swfobject.embedSWF(
+                "./assets/takephoto.swf", "flashContent", 
+                "580", "560", 
+                swfVersionStr, xiSwfUrlStr, 
+                flashvars, params, attributes);
+            // JavaScript enabled so display the flashContent div in case it is not replaced with a swf object.
+            swfobject.createCSS("#flashContent", "display:block;text-align:left;");
+        </script>
   </head>
 
   <body>
@@ -31,32 +84,48 @@
     <!-- MAIN CONTENT -->
     <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
-        <h3>包含以下功能:</h3>
+        <h3>Demo:</h3>
 
-<p><img src="https://raw.github.com/yangyifeng/takephoto/master/demo.png" alt="demo"></p>
-
-<pre><code>* 读取本地图片资源 (FileReference)
-
-* 读取摄像头 (Camera)
-
-* 生成展示用的缩略图 (BitmapData)
-
-* 原图与缩略图一起旋转 (BitmapData, Matrix, rotate, translate)
-
-* 截取原图的一部分生成缩略图 (BitmapData)
-
-* 截取框可移动、放大、缩小 (startDrag, MOUSE_UP, MOUSE_MOVE)
-
-* 修改鼠标右键，可加入公司介绍版权说明等信息 (ContextMenuItem)
-
-* 生成缩略图上传到服务器保存成图片（PHP）(ImageSnapshot.captureBitmapData, URLRequestHeader, URLVariables, URLLoader)
-</code></pre>
-
-<h3>开发工具</h3>
-
-<ul>
-<li>Adobe Flash Builder 4.6</li>
-</ul>
+        <div id="flashContent" style="display:none;">
+            <p>
+                To view this page ensure that Adobe Flash Player version 
+                11.1.0 or greater is installed. 
+            </p>
+            <script type="text/javascript"> 
+                var pageHost = ((document.location.protocol == "https:") ? "https://" : "http://"); 
+                document.write("<a href='http://www.adobe.com/go/getflashplayer'><img src='" 
+                                + pageHost + "www.adobe.com/images/shared/download_buttons/get_flash_player.gif' alt='Get Adobe Flash player' /></a>" ); 
+            </script> 
+        </div>
+        
+        <noscript>
+            <object classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" width="580" height="560" id="takephoto">
+                <param name="movie" value="./assets/takephoto.swf" />
+                <param name="quality" value="high" />
+                <param name="bgcolor" value="#ffffff" />
+                <param name="allowScriptAccess" value="sameDomain" />
+                <param name="allowFullScreen" value="true" />
+                <!--[if !IE]>-->
+                <object type="application/x-shockwave-flash" data="takephoto.swf" width="580" height="560">
+                    <param name="quality" value="high" />
+                    <param name="bgcolor" value="#ffffff" />
+                    <param name="allowScriptAccess" value="sameDomain" />
+                    <param name="allowFullScreen" value="true" />
+                <!--<![endif]-->
+                <!--[if gte IE 6]>-->
+                    <p> 
+                        Either scripts and active content are not permitted to run or Adobe Flash Player version
+                        11.1.0 or greater is not installed.
+                    </p>
+                <!--<![endif]-->
+                    <a href="http://www.adobe.com/go/getflashplayer">
+                        <img src="http://www.adobe.com/images/shared/download_buttons/get_flash_player.gif" alt="Get Adobe Flash Player" />
+                    </a>
+                <!--[if !IE]>-->
+                </object>
+                <!--<![endif]-->
+            </object>
+        </noscript>   
       </section>
     </div>
 
